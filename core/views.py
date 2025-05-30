@@ -2,16 +2,21 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from .models import User
+from .models import Question
 
-class UserList(APIView):
-    def get(self, request):
-        users = User.objects()
-        data = [{"id": str(user.id), "name": user.name, "email": user.email} for user in users]
-        return Response(data)
-
+class QuestionList(APIView):
     def post(self, request):
         data = request.data
-        user = User(name=data.get('name'), email=data.get('email'))
-        user.save()
-        return Response({"id": str(user.id)}, status=status.HTTP_201_CREATED)
+        try:
+            question = Question(
+                question=data.get("question"),
+                a=data.get("a"),
+                b=data.get("b"),
+                c=data.get("c"),
+                d=data.get("d"),
+                correct_answer=data.get("correct_answer"),
+            )
+            question.save()
+            return Response({"id": str(question.id)}, status=status.HTTP_201_CREATED)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
