@@ -4,7 +4,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from .models import Question
 
-class QuestionList(APIView):
+class QAView(APIView):
     def get(self, request):
         questions = Question.objects()  
         data = []
