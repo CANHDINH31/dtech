@@ -5,6 +5,21 @@ from rest_framework import status
 from .models import Question
 
 class QuestionList(APIView):
+    def get(self, request):
+        questions = Question.objects()  
+        data = []
+        for q in questions:
+            data.append({
+                "id": str(q.id),
+                "question": q.question,
+                "a": q.a,
+                "b": q.b,
+                "c": q.c,
+                "d": q.d,
+                "correct_answer": q.correct_answer
+            })
+        return Response(data)
+    
     def post(self, request):
         questions_data = request.data
         if not isinstance(questions_data, list):
