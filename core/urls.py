@@ -2,5 +2,5 @@ from django.urls import path
 from .views import QuestionList
 
 urlpatterns = [
-    path('questions/', QuestionList.as_view(), name='question-list'),
+    path('questions/', QuestionList.as_view(), name='question'),
 ]

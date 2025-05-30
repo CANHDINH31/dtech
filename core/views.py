@@ -6,17 +6,30 @@ from .models import Question
 
 class QuestionList(APIView):
     def post(self, request):
-        data = request.data
-        try:
-            question = Question(
-                question=data.get("question"),
-                a=data.get("a"),
-                b=data.get("b"),
-                c=data.get("c"),
-                d=data.get("d"),
-                correct_answer=data.get("correct_answer"),
-            )
-            question.save()
-            return Response({"id": str(question.id)}, status=status.HTTP_201_CREATED)
-        except Exception as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        questions_data = request.data
+        if not isinstance(questions_data, list):
+            return Response({"error": "Expected a list of questions"}, status=status.HTTP_400_BAD_REQUEST)
+
+        created_ids = []
+        errors = []
+
+        for idx, data in enumerate(questions_data):
+            try:
+                q = Question(
+                    question=data.get('question'),
+                    a=data.get('a'),
+                    b=data.get('b'),
+                    c=data.get('c'),
+                    d=data.get('d'),
+                    correct_answer=data.get('correct_answer')
+                )
+                q.save()
+                created_ids.append(str(q.id))
+            except Exception as e:
+                errors.append({"index": idx, "error": str(e)})
+
+        return Response({
+            "created_ids": created_ids,
+            "errors": errors
+        }, status=status.HTTP_201_CREATED if not errors else status.HTTP_207_MULTI_STATUS)
+
