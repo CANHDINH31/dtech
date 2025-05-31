@@ -1,4 +1,4 @@
-from mongoengine import Document, StringField
+from mongoengine import Document, StringField, FloatField, ListField
 
 class Question(Document):
     question = StringField(required=True)
@@ -9,3 +9,4 @@ class Question(Document):
     correct_answer = StringField(
         required=True, choices=("a", "b", "c", "d")
     )
+    embedding = ListField(FloatField())
