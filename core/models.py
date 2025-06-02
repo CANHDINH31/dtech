@@ -10,3 +10,9 @@ class Question(Document):
         required=True, choices=("a", "b", "c", "d")
     )
     embedding = ListField(FloatField())
+    
+class ResearchDocument(Document):
+    author = StringField(required=True)
+    title = StringField(required=True)
+    content = StringField(required=True)
+    year = StringField(required=True)
