@@ -1,60 +1,49 @@
 from sklearn.feature_extraction.text import TfidfVectorizer
 import faiss
 import numpy as np
+from ..models import ResearchDocument
 
-# 1. Kho dữ liệu mẫu (giả sử bạn có nhiều tài liệu)
-documents = [
-    "Học máy là lĩnh vực trí tuệ nhân tạo liên quan đến việc xây dựng các mô hình tự học.",
-    "Trí tuệ nhân tạo đang phát triển mạnh mẽ trong nhiều lĩnh vực khác nhau.",
-    "Đạo văn là hành vi sao chép ý tưởng hoặc nội dung mà không trích dẫn nguồn.",
-    "Máy học giúp máy tính nhận diện mẫu và dự đoán kết quả.",
-    "Bài luận về trí tuệ nhân tạo và ứng dụng trong công nghiệp."
-]
+class PlagiarismChecker:
+    def __init__(self):
+        self.documents_queryset = list(ResearchDocument.objects())
+        self.documents = [doc.content for doc in self.documents_queryset]
 
-# 2. Tạo TF-IDF vector cho toàn bộ kho dữ liệu
-vectorizer = TfidfVectorizer()
-tfidf_matrix = vectorizer.fit_transform(documents)  # shape (n_docs, n_features)
+        if not self.documents:
+            raise ValueError("Không có tài liệu trong cơ sở dữ liệu.")
 
-# FAISS yêu cầu vector float32 và ma trận dạng numpy
-tfidf_matrix = tfidf_matrix.astype(np.float32).toarray()
+        # TF-IDF vector hóa
+        self.vectorizer = TfidfVectorizer()
+        tfidf_matrix = self.vectorizer.fit_transform(self.documents).astype(np.float32).toarray()
 
-# 3. Khởi tạo index FAISS
-dimension = tfidf_matrix.shape[1]
-index = faiss.IndexFlatIP(dimension)  # IP = Inner Product, tương tự cosine similarity nếu vector chuẩn hóa
+        # Chuẩn hóa vector
+        self.index = self._build_faiss_index(tfidf_matrix)
 
-# Chuẩn hóa vector TF-IDF để dùng cosine similarity bằng inner product
-def normalize_vectors(vectors):
-    norms = np.linalg.norm(vectors, axis=1, keepdims=True)
-    return vectors / (norms + 1e-10)
+    def _normalize_vectors(self, vectors):
+        norms = np.linalg.norm(vectors, axis=1, keepdims=True)
+        return vectors / (norms + 1e-10)
 
-tfidf_matrix = normalize_vectors(tfidf_matrix)
+    def _build_faiss_index(self, vectors):
+        vectors = self._normalize_vectors(vectors)
+        dim = vectors.shape[1]
+        index = faiss.IndexFlatIP(dim)
+        index.add(vectors)
+        return index
 
-# Thêm vector vào index
-index.add(tfidf_matrix)
+    def check(self, query_text, top_k=3):
+        query_vec = self.vectorizer.transform([query_text]).astype(np.float32).toarray()
+        query_vec = self._normalize_vectors(query_vec)
+        distances, indices = self.index.search(query_vec, top_k)
 
-# 4. Hàm kiểm tra đạo văn với đoạn văn bản mới
-def check_plagiarism(query_text, top_k=3):
-    # Tạo vector TF-IDF của đoạn văn bản mới
-    query_vec = vectorizer.transform([query_text]).astype(np.float32).toarray()
-    query_vec = normalize_vectors(query_vec)
-
-    # Tìm kiếm top_k văn bản gần nhất trong index
-    distances, indices = index.search(query_vec, top_k)  # distances là similarity scores
-
-    results = []
-    for dist, idx in zip(distances[0], indices[0]):
-        if idx == -1:
-            continue
-        results.append({
-            "similarity": float(dist),
-            "document": documents[idx]
-        })
-    return results
-
-# 5. Thử nghiệm
-query = "Đạo văn"
-results = check_plagiarism(query)
-
-print("Top kết quả kiểm tra đạo văn:")
-for r in results:
-    print(f"- Similarity: {r['similarity']:.4f}, Document: {r['document']}")
+        results = []
+        for dist, idx in zip(distances[0], indices[0]):
+            if idx == -1:
+                continue
+            doc = self.documents_queryset[idx]
+            results.append({
+                "similarity": float(dist),
+                "author": doc.author,
+                "title": doc.title,
+                "year": doc.year,
+                "content": doc.content
+            })
+        return results

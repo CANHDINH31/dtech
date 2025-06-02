@@ -1,25 +1,15 @@
+# views.py
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from ..models import Question
-from sentence_transformers import SentenceTransformer
+from ..utils.search_full_text_core import PlagiarismChecker
 
-model = SentenceTransformer('all-MiniLM-L6-v2')
-
+checker = PlagiarismChecker()
 class PlagiarismCheckView(APIView):
     def post(self, request):
-        questions = Question.objects()
-        updated = 0
-        for q in questions:
-            try:
-                emb = model.encode(q.question).tolist()
-                q.embedding = emb
-                q.save()
-                updated += 1
-            except Exception as e:
-                continue
-
-        return Response({
-            "message": "Train completed",
-            "total_trained": updated
-        }, status=status.HTTP_200_OK)
+            query = request.data.get("text")
+            if not query:
+                return Response({"error": "Missing 'text' field"}, status=status.HTTP_400_BAD_REQUEST)
+            
+            results = checker.check(query)
+            return Response({"results": results}, status=status.HTTP_200_OK)
