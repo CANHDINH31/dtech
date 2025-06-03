@@ -2,6 +2,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from ..models import Question
+from ..utils.text_utils import extract_keywords
 from sentence_transformers import SentenceTransformer
 from scipy.spatial.distance import cosine
 
@@ -42,10 +43,11 @@ class QAView(APIView):
             used_threshold = None
 
             for threshold in thresholds:
+                keywords = extract_keywords(user_question) 
                 matched_questions = []
                 for q in questions:
                     dist = cosine(user_emb, q.embedding)
-                    if dist < threshold:
+                    if dist < threshold and any(k.lower() in q.question.lower() for k in keywords):
                         matched_questions.append({
                             "id": str(q.id),
                             "question": q.question,
