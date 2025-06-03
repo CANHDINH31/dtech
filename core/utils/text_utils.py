@@ -1,15 +1,11 @@
 import re
 
 def clean_text(text: str) -> str:
-    # Loại bỏ khoảng trắng đầu cuối
-    text = text.strip()
-    # Chuyển về chữ thường
-    text = text.lower()
-    # Loại bỏ ký tự đặc biệt, chỉ giữ chữ, số, dấu cách
-    text = re.sub(r'[^a-z0-9\s]', '', text)
-    # Loại bỏ nhiều khoảng trắng thành 1 khoảng trắng
-    text = re.sub(r'\s+', ' ', text)
-    return text
+    # Bỏ ký tự xuống dòng, dấu *, dấu ** markdown
+    text = re.sub(r'\n+', ' ', text)              # bỏ dòng mới
+    text = re.sub(r'\*+', '', text)               # bỏ dấu * và **
+    text = re.sub(r'\s+', ' ', text)              # chuẩn hóa khoảng trắng
+    return text.strip()
 
 def extract_keywords(question: str) -> list[str]:
     # Đưa về chữ thường
