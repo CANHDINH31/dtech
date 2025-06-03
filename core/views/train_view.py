@@ -8,7 +8,12 @@ model = SentenceTransformer('all-MiniLM-L6-v2')
 
 class TrainView(APIView):
     def post(self, request):
-        questions = Question.objects()
+        questions = Question.objects(__raw__={
+            '$or': [
+                {'embedding': {'$exists': False}},
+                {'embedding': {'$size': 0}}
+            ]
+        })
         updated = 0
         for q in questions:
             try:

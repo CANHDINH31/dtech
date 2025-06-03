@@ -16,7 +16,8 @@ class QAView(APIView):
                 "b": q.b,
                 "c": q.c,
                 "d": q.d,
-                "correct_answer": q.correct_answer
+                "correct_answer": q.correct_answer,
+                "has_embedding": bool(q.embedding) 
             })
         return Response(data)
     
