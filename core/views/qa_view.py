@@ -5,8 +5,11 @@ from ..models import Question
 from ..utils.text_utils import extract_keywords
 from sentence_transformers import SentenceTransformer
 from scipy.spatial.distance import cosine
+import requests
 
 model = SentenceTransformer('all-MiniLM-L6-v2')
+
+GEMINI_API_KEY = "AIzaSyACeMStY69pEIBlrXD9yN-TDbH7YH9Ro5Q"
 
 class QAView(APIView):
     def get(self, request):
@@ -38,11 +41,12 @@ class QAView(APIView):
         return isinstance(data, dict) and 'question' in data and isinstance(data['question'], str)
     
     def _handle_single_question(self, user_question: str):
+        print(user_question, "user_question")
         user_emb = model.encode(user_question)
         keywords = extract_keywords(user_question)
         questions = self._get_trained_questions()
 
-        thresholds = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
+        thresholds = [0.1, 0.2, 0.3, 0.4, 0.5]
         matched_questions, used_threshold = self._search_by_thresholds(user_emb, questions, keywords, thresholds)
 
         if matched_questions:
@@ -51,9 +55,11 @@ class QAView(APIView):
                 "used_threshold": used_threshold
             })
         else:
+            gemini_response = self._ask_gemini(user_question)
             return Response({
                 "message": "No matching question found",
-                "used_threshold": thresholds[-1]
+                "used_threshold": thresholds[-1],
+                "gemini_response": gemini_response
             }, status=404)
 
     def _get_trained_questions(self):
@@ -108,4 +114,27 @@ class QAView(APIView):
             "created_ids": created_ids,
             "errors": errors
         }, status=status.HTTP_201_CREATED if not errors else status.HTTP_207_MULTI_STATUS)
+    
+    def _ask_gemini(self, prompt: str) -> str:
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}"
+        headers = {
+            "Content-Type": "application/json"
+        }
+        data = {
+            "contents": [
+                {
+                    "parts": [
+                        {"text": prompt}
+                    ]
+                }
+            ]
+        }
+
+        try:
+            response = requests.post(url, headers=headers, json=data)
+            response.raise_for_status()
+            result = response.json()
+            return result["candidates"][0]["content"]["parts"][0]["text"]
+        except Exception as e:
+            return f"Error calling Gemini API: {str(e)}"
 
