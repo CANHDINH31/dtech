@@ -17,7 +17,8 @@ class TrainView(APIView):
         updated = 0
         for q in questions:
             try:
-                emb = model.encode(q.question).tolist()
+                full_text = f"{q.question} {q.a} {q.b} {q.c} {q.d}"
+                emb = model.encode(full_text).tolist()
                 q.embedding = emb
                 q.save()
                 updated += 1
