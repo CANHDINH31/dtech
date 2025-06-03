@@ -6,10 +6,9 @@ from ..utils.text_utils import extract_keywords
 from sentence_transformers import SentenceTransformer
 from scipy.spatial.distance import cosine
 import requests
+from django.conf import settings
 
 model = SentenceTransformer('all-MiniLM-L6-v2')
-
-GEMINI_API_KEY = "AIzaSyACeMStY69pEIBlrXD9yN-TDbH7YH9Ro5Q"
 
 class QAView(APIView):
     def get(self, request):
@@ -116,7 +115,7 @@ class QAView(APIView):
         }, status=status.HTTP_201_CREATED if not errors else status.HTTP_207_MULTI_STATUS)
     
     def _ask_gemini(self, prompt: str) -> str:
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}"
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={settings.GEMINI_API_KEY}"
         headers = {
             "Content-Type": "application/json"
         }
