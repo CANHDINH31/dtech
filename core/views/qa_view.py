@@ -2,11 +2,12 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from ..models import Question
-from ..utils.text_utils import extract_keywords
+from ..utils.text_utils import extract_keywords, clean_text
 from sentence_transformers import SentenceTransformer
 from scipy.spatial.distance import cosine
 import requests
 from django.conf import settings
+
 
 model = SentenceTransformer('all-MiniLM-L6-v2')
 
@@ -133,7 +134,8 @@ class QAView(APIView):
             response = requests.post(url, headers=headers, json=data)
             response.raise_for_status()
             result = response.json()
-            return result["candidates"][0]["content"]["parts"][0]["text"]
+            raw_text = result["candidates"][0]["content"]["parts"][0]["text"]
+            return clean_text(raw_text)
         except Exception as e:
             return f"Error calling Gemini API: {str(e)}"
 
