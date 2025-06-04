@@ -6,6 +6,8 @@ from rest_framework import status
 from docx import Document as DocxDocument
 from docx.enum.text import WD_COLOR_INDEX
 import re
+from ..models import Question
+from mongoengine.errors import ValidationError
 
 class UploadView(APIView):
     parser_classes = [MultiPartParser, FormParser]
@@ -26,12 +28,22 @@ class UploadView(APIView):
 
         try:
             questions = self.extract_questions_with_answers(filepath)
+            saved_count = 0
+            for q in questions:
+                try:
+                    q["question"] = self.remove_prefix(q["question"])  
+                    question_obj = self.convert_question(q)
+                    question_obj.save()
+                    saved_count += 1
+                except (ValidationError, ValueError) as qe:
+                    print(f"❌ Lỗi lưu câu hỏi: {qe}")
         except Exception as e:
             return Response({"error": str(e)}, status=500)
 
         return Response({
             "filename": file.name,
             "total_questions": len(questions),
+            "saved_to_db": saved_count,
             "questions": questions
         })
 
@@ -79,3 +91,28 @@ class UploadView(APIView):
                 i += 1
 
         return questions
+    
+    
+    def convert_question(self, raw_question):
+        choices = ["a", "b", "c", "d"]
+        answers = raw_question["answers"]
+        
+        if len(answers) != 4:
+            raise ValueError(f"Không đủ 4 đáp án cho câu: {raw_question['question']}")
+        
+        correct_idx = next((i for i, ans in enumerate(answers) if ans["is_correct"]), None)
+        if correct_idx is None:
+            raise ValueError(f"Không tìm thấy đáp án đúng cho câu: {raw_question['question']}")
+        
+        return Question(
+            question=raw_question["question"],
+            a=answers[0]["text"],
+            b=answers[1]["text"],
+            c=answers[2]["text"],
+            d=answers[3]["text"],
+            correct_answer=choices[correct_idx]
+        )
+        
+    def remove_prefix(self, question_text):
+        # Loại bỏ tiền tố kiểu "Câu 1:", "Câu 18:",...
+        return re.sub(r'^Câu\s*\d+:\s*', '', question_text).strip()
