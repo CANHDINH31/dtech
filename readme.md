@@ -38,3 +38,17 @@ pip install -r requirements.txt
 python manage.py migrate
 python manage.py runserver
 ```
+
+## Deploy
+
+`gunicorn yourproject.wsgi:application --bind 0.0.0.0:8000`
+
+`sudo nano /etc/systemd/system/gunicorn.service
+sudo systemctl daemon-reexec
+sudo systemctl restart gunicorn
+sudo systemctl status gunicorn
+ sudo systemctl enable gunicorn
+`
+
+`sudo systemctl restart gunicorn
+sudo systemctl status gunicorn`
