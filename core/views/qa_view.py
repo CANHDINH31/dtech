@@ -60,7 +60,7 @@ class QAView(APIView):
                 "message": "No matching question found",
                 "used_threshold": thresholds[-1],
                 "gemini_response": gemini_response
-            }, status=404)
+            })
 
     def _get_trained_questions(self):
         return Question.objects(__raw__={
