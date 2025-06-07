@@ -51,4 +51,6 @@ sudo systemctl status gunicorn
 `
 
 `sudo systemctl restart gunicorn
-sudo systemctl status gunicorn`
+sudo systemctl status gunicorn
+sudo systemctl restart nginx
+`
