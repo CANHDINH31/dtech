@@ -14,12 +14,9 @@ class UploadView(APIView):
 
     def post(self, request):
         file = request.FILES.get('file')
+        print(file.name,"file")
         if not file:
             return Response({"error": "Chưa chọn file"}, status=status.HTTP_400_BAD_REQUEST)
-
-        if not file.name.endswith('.docx'):
-            return Response({"error": "Chỉ hỗ trợ file .docx"}, status=status.HTTP_400_BAD_REQUEST)
-
         # Lưu tạm file
         filepath = f"/tmp/{file.name}"
         with open(filepath, 'wb+') as destination:
