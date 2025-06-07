@@ -133,3 +133,9 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 MONGO_DB_URI = "mongodb+srv://dinhphamcanh400:dinhphamcanh400@cluster0.sr7x9.mongodb.net/dtechai?retryWrites=true&w=majority&appName=Cluster0"
 
 connect(host=MONGO_DB_URI)
+
+REST_FRAMEWORK = {
+    'DEFAULT_RENDERER_CLASSES': [
+        'rest_framework.renderers.JSONRenderer',
+    ]
+}
