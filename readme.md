@@ -54,3 +54,5 @@ sudo systemctl status gunicorn
 sudo systemctl status gunicorn
 sudo systemctl restart nginx
 `
+
+`sudo apt install ffmpeg`

@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import QAView,TrainView,DocView,PlagiarismCheckView,ChatBoxView,UploadView
+from .views import QAView,TrainView,DocView,PlagiarismCheckView,ChatBoxView,UploadView, SpeechView
 
 urlpatterns = [
     path('questions/', QAView.as_view(), name='question'),
@@ -9,4 +9,6 @@ urlpatterns = [
     path('train/', TrainView.as_view(), name='train'),
     path("check-plagiarism/", PlagiarismCheckView.as_view(), name="check_plagiarism"),
     path('upload/', UploadView.as_view(), name='upload'),
+    path('speech/', SpeechView.as_view(), name='speech'),
+
 ]
