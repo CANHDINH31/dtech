@@ -26,9 +26,13 @@ class UploadView(APIView):
         try:
             questions = self.extract_questions_with_answers(filepath)
             saved_count = 0
+            skipped_count = 0
             for q in questions:
                 try:
                     q["question"] = self.remove_prefix(q["question"])  
+                    if Question.objects.filter(question__iexact=q["question"]).first():
+                        skipped_count += 1
+                        continue
                     question_obj = self.convert_question(q)
                     question_obj.save()
                     saved_count += 1
