@@ -37,6 +37,7 @@ pip install -r requirements.txt
 ```
 python manage.py migrate
 python manage.py runserver
+python manage.py runserver 0.0.0.0:8000
 ```
 
 ## Deploy
@@ -56,3 +57,4 @@ sudo systemctl restart nginx
 `
 
 `sudo apt install ffmpeg`
+`sudo apt install tesseract-ocr tesseract-ocr-vie`
