@@ -105,31 +105,25 @@ class ExamView(APIView):
         for block in text_blocks:
             lines = block.split('\n')
             i = 0
+
             while i < len(lines):
                 line = lines[i].strip()
-
                 if re.match(r'^Câu\s*\d+', line, re.IGNORECASE):
+                    # Gộp các dòng tiếp theo nếu chưa đủ dấu ? hoặc :
                     question_text = ""
                     i += 1
+                    while i < len(lines):
+                        current_line = lines[i].strip()
+                        question_text += " " + current_line
 
-                    # while i < len(lines):
-                    #     current_line = lines[i].strip()
+                        # Nếu có dấu kết thúc thì cắt tới đó
+                        match = re.search(r'(.+?[?:])', question_text)
+                        if match:
+                            full_question = match.group(1).strip()
+                            questions.append({"question_text": full_question})
+                            break
 
-                    #     # Nếu dòng bắt đầu bằng đáp án A/B/C/D => kết thúc câu hỏi
-                    #     if re.match(r'^[ABCD]\s', current_line):
-                    #         break
-
-                    #     question_text += " " + current_line
-                    #     i += 1
-
-                    question_text = question_text.strip()
-
-                    # Nếu câu hỏi vẫn còn kèm dấu ? hoặc : thì có thể cắt tại đó
-                    match = re.search(r'(.+?[?:])', question_text)
-                    if match:
-                        question_text = match.group(1).strip()
-
-                    questions.append({"question_text": question_text})
+                        i += 1
                 else:
                     i += 1
 
