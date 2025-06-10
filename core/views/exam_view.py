@@ -101,30 +101,162 @@ class ExamView(APIView):
     
     def extract_questions(self, text_blocks):
         questions = []
-
+        
         for block in text_blocks:
             lines = block.split('\n')
             i = 0
-
+            
             while i < len(lines):
                 line = lines[i].strip()
-                if re.match(r'^Câu\s*\d+', line, re.IGNORECASE):
-                    # Gộp các dòng tiếp theo nếu chưa đủ dấu ? hoặc :
+                
+                # Tìm dòng bắt đầu bằng "Câu" + số
+                question_match = re.match(r'^Câu\s*\d+([a-zA-Z]*)\s*[:.]?\s*$', line, re.IGNORECASE)
+                if question_match:
                     question_text = ""
+                    
+                    # Lấy phần còn lại của dòng sau "Câu X:"
+                    remaining_line = re.sub(r'^Câu\s*\d+[:\s]*', '', line, flags=re.IGNORECASE).strip()
+                    if remaining_line:
+                        question_text = remaining_line
+                    
                     i += 1
+                    
+                    # Đọc các dòng tiếp theo cho đến khi gặp đáp án hoặc câu mới
                     while i < len(lines):
                         current_line = lines[i].strip()
-                        question_text += " " + current_line
-
-                        # Nếu có dấu kết thúc thì cắt tới đó
-                        match = re.search(r'(.+?[?:])', question_text)
-                        if match:
-                            full_question = match.group(1).strip()
-                            questions.append({"question_text": full_question})
+                        
+                        # Dừng nếu gặp đáp án (các pattern khác nhau)
+                        if self._is_answer_line(current_line):
                             break
-
+                        
+                        # Dừng nếu gặp câu hỏi mới
+                        if re.match(r'^Câu\s*\d+', current_line, re.IGNORECASE):
+                            i -= 1  # Lùi lại để xử lý câu này
+                            break
+                        
+                        # Bỏ qua các dòng nhiễu
+                        if not self._is_noise_line(current_line):
+                            if question_text:
+                                question_text += " " + current_line
+                            else:
+                                question_text = current_line
+                        
                         i += 1
+                    
+                    # Làm sạch và lưu câu hỏi
+                    if question_text:
+                        cleaned_question = self._clean_question_text(question_text)
+                        
+                        if cleaned_question and len(cleaned_question) >= 10:
+                            questions.append({"question_text": cleaned_question})
                 else:
                     i += 1
+        
+        # Loại bỏ trùng lặp
+        return self._remove_duplicates(questions)
 
-        return questions
+    def _is_answer_line(self, line):
+        """Kiểm tra xem dòng có phải là đáp án không"""
+        answer_patterns = [
+            r'^[ABCD]\.', # A. B. C. D.
+            r'^Ó\s*[ABCD]', # Ó A, Ó B
+            r'^[○●]\s*[ABCD]', # ○ A, ● B  
+            r'^[ABCD]\s+[A-ZÁÀẢÃẠÂẤẦẨẪẬĂẮẰẲẴẶ]', # A Luôn xác định...
+            r'^ọ\s*[ABCD]', # ọ A, ọ B
+            r'^Đi\s*[ABCD]' # Đi B
+        ]
+        
+        for pattern in answer_patterns:
+            if re.match(pattern, line):
+                return True
+        return False
+
+    def _is_noise_line(self, line):
+        """Kiểm tra xem dòng có phải là nhiễu không"""
+        if not line or len(line.strip()) == 0:
+            return True
+        
+        noise_patterns = [
+            r'^Gần cờ\s*$',
+            r'^Thoát\s*$', 
+            r'^Luyện tập trắc nghiệm',
+            r'^Luật dân sự\s*\d*\s*$',
+            r'^[^\w\sÀ-ỹ]+$', # Chỉ chứa ký tự đặc biệt
+            r'^\d+\s*$', # Chỉ có số
+            r'^[a-zA-Z]{1,3}\s+[0-9]+\s*[a-zA-Z]*\s*$', # Các code lạ
+            r'^[hb]\s*$' # Các ký tự đơn lẻ
+        ]
+        
+        for pattern in noise_patterns:
+            if re.match(pattern, line, re.IGNORECASE):
+                return True
+        return False
+
+    def _clean_question_text(self, text):
+        """Làm sạch văn bản câu hỏi"""
+        # Loại bỏ đáp án nếu có lẫn vào
+        text = self._remove_embedded_answers(text)
+        
+         # Loại bỏ phần sau dấu ":" nếu có
+        text = re.sub(r':.*$', '', text)
+        
+        # Chuẩn hóa khoảng trắng
+        text = re.sub(r'\s+', ' ', text.strip())
+        
+        # Loại bỏ các cụm từ nhiễu
+        noise_phrases = [
+            r'Gần cờ',
+            r'Thoát', 
+            r'Luyện tập trắc nghiệm Chương \d+',
+            r'Luật dân sự \d*',
+            r'\b[a-zA-Z]{1,2}\s+\d+\s+[a-zA-Z]*\b', # Code lạ
+            r'\bSá b\b',
+            r'\bR b\b',
+            r'\bAn \d+ b\b'
+        ]
+        
+        for pattern in noise_phrases:
+            text = re.sub(pattern, '', text, flags=re.IGNORECASE)
+        
+        # Loại bỏ ký tự lạ ở đầu và cuối
+        text = re.sub(r'^[^\w\sÀ-ỹ]+|[^\w\sÀ-ỹ?:.!]+$', '', text)
+        
+        # Chuẩn hóa lại khoảng trắng sau khi xử lý
+        text = re.sub(r'\s+', ' ', text.strip())
+        
+        return text
+
+    def _remove_embedded_answers(self, text):
+        """Loại bỏ đáp án có thể lẫn vào câu hỏi"""
+        # Pattern để tìm và loại bỏ đáp án
+        answer_patterns = [
+            r'\s+[ABCD]\.?\s+[A-ZÁÀẢÃẠÂẤẦẨẪẬĂẮẰẲẴẶ][^.?:]*',
+            r'\s+Ó\s*[ABCD]\.?\s+[^.?:]*',
+            r'\s+ọ\s*[ABCD]\.?\s+[^.?:]*',
+            r'\s+Đi\s*[ABCD]\.?\s+[^.?:]*'
+        ]
+        
+        for pattern in answer_patterns:
+            # Tìm vị trí đầu tiên của đáp án và cắt phần trước đó
+            match = re.search(pattern, text)
+            if match:
+                text = text[:match.start()]
+                break
+        
+        return text.strip()
+
+    def _remove_duplicates(self, questions):
+        """Loại bỏ câu hỏi trùng lặp"""
+        unique_questions = []
+        seen_texts = set()
+        
+        for q in questions:
+            question_text = q["question_text"].lower().strip()
+            # So sánh 50 ký tự đầu để tránh trùng lặp gần giống
+            key = question_text[:50] if len(question_text) > 50 else question_text
+            
+            if key not in seen_texts:
+                unique_questions.append(q)
+                seen_texts.add(key)
+        
+        return unique_questions
